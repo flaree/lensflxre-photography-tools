@@ -136,7 +136,7 @@ function ManualClubSearch() {
     <div className="generated-code-page container-page">
       <Toaster position="top-right" />
       <div className="card generated-code-card">
-        {showPopup && (
+        {/* {showPopup && (
           <div className="generated-popup">
             <span>
               The project may experience intermittent issues due to Transfermarkt being strict with scraping. A more
@@ -146,7 +146,7 @@ function ManualClubSearch() {
               &times;
             </button>
           </div>
-        )}
+        )} */}
         <div className="card-header">
           <div>
             <div className="card-title">Manual club search</div>
