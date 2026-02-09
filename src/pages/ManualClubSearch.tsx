@@ -1,5 +1,6 @@
 // @ts-nocheck - TODO: Add proper TypeScript types
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./codegen.css";
 import AdditionalOptions from "../components/AdditionalOptions";
 import { generateCode } from "../utils/codeGenerator";
@@ -45,6 +46,7 @@ function ManualClubSearch() {
   });
   
   const [showPopup, setShowPopup] = useState(true); // State to control the visibility of the popup
+  const navigate = useNavigate();
 
   const handleSearch = async (searchTerm, setResults, resetSelection, setSearching) => {
     try {
@@ -314,6 +316,33 @@ function ManualClubSearch() {
           >
             {loading ? 'Generating code replacements...' : 'Generate code replacements'}
           </button>
+          {selectedTeam1 && selectedTeam2 && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                if (!generatedCode) {
+                  const confirmed = window.confirm(
+                    'You haven\'t generated code replacements yet. Are you sure you want to leave without generating/downloading them?'
+                  );
+                  if (!confirmed) {
+                    return;
+                  }
+                }
+                const params = new URLSearchParams({
+                  homeId: selectedTeam1.id,
+                  homeName: selectedTeam1.name,
+                  homeCountry: selectedTeam1.country || '',
+                  awayId: selectedTeam2.id,
+                  awayName: selectedTeam2.name,
+                  awayCountry: selectedTeam2.country || '',
+                });
+                navigate(`/metadata?${params.toString()}`);
+              }}
+            >
+              Generate XMP metadata file
+            </button>
+          )}
         </div>
         {generatedCode && (
           <div className="preview-block success-fade-in" style={{ marginTop: 16 }}>

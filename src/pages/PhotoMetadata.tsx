@@ -1,11 +1,13 @@
 // @ts-nocheck - TODO: Add proper TypeScript types
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import './codegen.css';
 import { escapeXml, copyToClipboard, downloadTextFile, getTodayISO } from '../utils/helpers';
 import { searchClubs, fetchClubProfile } from '../services/api';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function PhotoMetadata() {
+  const [searchParams] = useSearchParams();
   const [meta, setMeta] = useState({
     objectName: '', // Title
     headline: '',
@@ -65,7 +67,7 @@ export default function PhotoMetadata() {
 
   const handleDownload = () => {
     const xmp = generateXMP(meta);
-    downloadTextFile(xmp, `${meta.dateCreated ? meta.dateCreated + '-' : ''}${meta.objectName || 'photo-metadata'}.xmp`, 'application/xml');
+    downloadTextFile(xmp, `${meta.dateCreated ? meta.dateCreated + '-' : ''}${meta.objectName || 'metadata'}.xmp`, 'application/xml');
   };
 
   // Club search states (hidden behind dropdown)
@@ -79,6 +81,25 @@ export default function PhotoMetadata() {
   const [selectedHomeClub, setSelectedHomeClub] = useState(null);
   const [selectedAwayClub, setSelectedAwayClub] = useState(null);
   const [checkToday, setCheckToday] = useState(false);
+
+  // Handle URL parameters for pre-filling teams
+  useEffect(() => {
+    const homeId = searchParams.get('homeId');
+    const homeName = searchParams.get('homeName');
+    const homeCountry = searchParams.get('homeCountry');
+    const awayId = searchParams.get('awayId');
+    const awayName = searchParams.get('awayName');
+    const awayCountry = searchParams.get('awayCountry');
+
+    if (homeId && homeName) {
+      setSelectedHomeClub({ id: homeId, name: homeName, country: homeCountry || '' });
+      setShowClubSearch(true);
+    }
+    if (awayId && awayName) {
+      setSelectedAwayClub({ id: awayId, name: awayName, country: awayCountry || '' });
+      setShowClubSearch(true);
+    }
+  }, [searchParams]);
 
   const handleClubSearch = async (term, setResults, setSearching) => {
     if (!term) {
@@ -160,6 +181,7 @@ export default function PhotoMetadata() {
     const awayName = selectedAwayClub?.name || '';
 
     const stadium = (homeProfile && (homeProfile.stadiumName)) || '';
+    const country = selectedHomeClub?.country || (homeProfile && homeProfile.country) || '';
 
     const title = homeName && awayName ? `${homeName} vs ${awayName}` : (homeName || awayName || 'Match');
     const description = `during the {COMPETITION} match between ${homeName || 'Home Team'} and ${awayName || 'Away Team'}${stadium ? ' at ' + stadium : ''}.`;
@@ -298,6 +320,23 @@ export default function PhotoMetadata() {
           </select>
         </div>
         )}
+        {selectedHomeClub && homeResults.length === 0 && (
+          <div style={{ marginTop: 10 }}>
+            <label className="field-label">Selected</label>
+            <div className="card" style={{ padding: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>{selectedHomeClub.name} {selectedHomeClub.country ? `- ${selectedHomeClub.country}` : ''}</span>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => setSelectedHomeClub(null)}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="generated-column card" style={{ padding: 14 }}>
@@ -345,6 +384,23 @@ export default function PhotoMetadata() {
           ))}
           </select>
         </div>
+        )}
+        {selectedAwayClub && awayResults.length === 0 && (
+          <div style={{ marginTop: 10 }}>
+            <label className="field-label">Selected</label>
+            <div className="card" style={{ padding: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>{selectedAwayClub.name} {selectedAwayClub.country ? `- ${selectedAwayClub.country}` : ''}</span>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => setSelectedAwayClub(null)}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
       </div>

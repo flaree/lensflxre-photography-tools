@@ -73,6 +73,7 @@ export default function LeagueCodeGenerator() {
 	const [generatedCode, setGeneratedCode] = useState('');
 	const [loading, setLoading] = useState(false);
 	const [delimiters, setDelimiters] = useState({});
+	const [selectedTeams, setSelectedTeams] = useState(new Set());
 	const [currentTeam, setCurrentTeam] = useState('');
 	const [processedCount, setProcessedCount] = useState(0);
 	const [errors, setErrors] = useState([]);
@@ -119,6 +120,9 @@ export default function LeagueCodeGenerator() {
 					// Generate delimiters for all teams
 					const generatedDelimiters = generateDelimiters(teamList);
 					setDelimiters(generatedDelimiters);
+					
+					// Select all teams by default
+					setSelectedTeams(new Set(teamList));
 				} catch (error) {
 					console.error("Error fetching teams:", error);
 					toast.error("Failed to fetch teams. Please try again.");
@@ -128,6 +132,7 @@ export default function LeagueCodeGenerator() {
 		} else {
 			setTeams([]);
 			setDelimiters({});
+			setSelectedTeams(new Set());
 		}
 	}, [selectedLeague]);
 
@@ -136,6 +141,13 @@ export default function LeagueCodeGenerator() {
 			toast.error("Please select a league first.");
 			return;
 		}
+		
+		if (selectedTeams.size === 0) {
+			toast.error("Please select at least one team.");
+			return;
+		}
+		
+		const teamsToProcess = teams.filter(team => selectedTeams.has(team));
 
 		try {
 			setLoading(true);
@@ -146,8 +158,8 @@ export default function LeagueCodeGenerator() {
 			const errorList = [];
 			
 			// Fetch all team squads and generate codes
-			for (let i = 0; i < teams.length; i++) {
-				const teamName = teams[i];
+			for (let i = 0; i < teamsToProcess.length; i++) {
+				const teamName = teamsToProcess[i];
 				const teamId = teamMap[teamName];
 				const delimiter = delimiters[teamName];
 				
@@ -238,7 +250,7 @@ export default function LeagueCodeGenerator() {
 
 			// Add delimiter reference section
 			finalCode += "# Team Delimiters\n";
-			teams.forEach(teamName => {
+			teamsToProcess.forEach(teamName => {
 				const delimiter = delimiters[teamName];
 				finalCode += `${delimiter}\t${teamName}\n`;
 			});
@@ -307,36 +319,96 @@ export default function LeagueCodeGenerator() {
 
 						{teams.length > 0 && (
 							<div className="team-preview">
-								<h3>Teams in {selectedLeague} ({teams.length}) - Click delimiters to edit</h3>
+								<h3>
+									Teams in {selectedLeague} ({selectedTeams.size}/{teams.length} selected) - Click delimiters to edit, team names to toggle
+								</h3>
 								<div className="delimiter-grid">
-									{teams.map(team => (
-										<div key={team} className="delimiter-item">
-											<input
-												type="text"
-												className="delimiter-code"
-												value={(delimiters[team] || '').toUpperCase()}
-												onChange={(e) => {
-													const newValue = e.target.value.toLowerCase();
-													setDelimiters(prev => ({
-														...prev,
-														[team]: newValue
-													}));
-												}}
+									{teams.map(team => {
+										const isSelected = selectedTeams.has(team);
+										const currentDelimiter = delimiters[team] || '';
+										const duplicateCount = Object.values(delimiters).filter(d => d === currentDelimiter && d !== '').length;
+										const hasDuplicate = duplicateCount > 1;
+										
+										return (
+											<div 
+												key={team} 
+												className="delimiter-item"
 												style={{
-													cursor: 'text',
-													textAlign: 'center',
-													border: 'none',
-													outline: 'none',
-													background: 'var(--primary-color)',
-													color: 'white',
-													maxWidth: '60px',
-													flexShrink: 0,
+													opacity: isSelected ? 1 : 0.5,
+													background: isSelected ? 'var(--bg-secondary)' : 'var(--bg-primary)',
 												}}
-												title={`Edit delimiter for ${team}`}
-											/>
-											<span className="team-name">{team}</span>
-										</div>
-									))}
+											>
+												<input
+													type="text"
+													className="delimiter-code"
+													value={(delimiters[team] || '').toUpperCase()}
+													onChange={(e) => {
+														const newValue = e.target.value.toLowerCase();
+														setDelimiters(prev => ({
+															...prev,
+															[team]: newValue
+														}));
+													}}
+													style={{
+														cursor: 'text',
+														textAlign: 'center',
+														border: hasDuplicate ? '2px solid #ef4444' : 'none',
+														outline: 'none',
+														background: hasDuplicate ? '#ef4444' : 'var(--primary-color)',
+														color: 'white',
+														maxWidth: '60px',
+														flexShrink: 0,
+													}}
+													title={hasDuplicate ? `⚠️ Duplicate delimiter! (used by ${duplicateCount} teams)` : `Edit delimiter for ${team}`}
+													disabled={!isSelected}
+												/>
+												<span 
+													className="team-name"
+													onClick={() => {
+														setSelectedTeams(prev => {
+															const newSet = new Set(prev);
+															if (newSet.has(team)) {
+																newSet.delete(team);
+															} else {
+																newSet.add(team);
+															}
+															return newSet;
+														});
+													}}
+													style={{
+														cursor: 'pointer',
+														textDecoration: isSelected ? 'none' : 'line-through',
+													}}
+													title={`Click to ${isSelected ? 'deselect' : 'select'} ${team}`}
+												>
+													{team}
+												</span>
+											</div>
+										);
+									})}
+								</div>
+								<div style={{ 
+									marginTop: 12, 
+									display: 'flex', 
+									gap: 8,
+									justifyContent: 'flex-end' 
+								}}>
+									<button
+										type="button"
+										className="btn btn-secondary"
+										onClick={() => setSelectedTeams(new Set(teams))}
+										style={{ fontSize: 13, padding: '6px 12px' }}
+									>
+										Select All
+									</button>
+									<button
+										type="button"
+										className="btn btn-secondary"
+										onClick={() => setSelectedTeams(new Set())}
+										style={{ fontSize: 13, padding: '6px 12px' }}
+									>
+										Deselect All
+									</button>
 								</div>
 							</div>
 						)}
@@ -372,7 +444,7 @@ export default function LeagueCodeGenerator() {
 									color: 'var(--text-muted)',
 									fontFamily: 'monospace'
 								}}>
-									{processedCount}/{teams.length}
+									{processedCount}/{selectedTeams.size}
 								</span>
 							</div>
 							{currentTeam && (
@@ -392,7 +464,7 @@ export default function LeagueCodeGenerator() {
 								overflow: 'hidden'
 							}}>
 								<div style={{ 
-									width: `${(processedCount / teams.length) * 100}%`, 
+									width: `${(processedCount / selectedTeams.size) * 100}%`, 
 									height: '100%', 
 									background: 'var(--primary-color)',
 									transition: 'width 0.3s ease'

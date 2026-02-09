@@ -1,5 +1,6 @@
 // @ts-nocheck - TODO: Add proper TypeScript types
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './codegen.css';
 import AdditionalOptions from '../components/AdditionalOptions';
 import { generateCode } from "../utils/codeGenerator";
@@ -60,6 +61,7 @@ export default function TeamCodeGenerator() {
 		includeNoNumberPlayers: true,
 
 	  });
+	const navigate = useNavigate();
 
 	useEffect(() => {
 		if (selectedLeague) {
@@ -272,8 +274,31 @@ export default function TeamCodeGenerator() {
 														disabled={loading || !selectedTeam1}
 													>
 														{loading ? 'Generating code replacements...' : 'Generate code replacements'}
+													</button>												{selectedTeam1 && selectedTeam2 && (
+													<button
+														type="button"
+														className="btn btn-secondary"
+														onClick={() => {
+															if (!generatedCode) {
+																const confirmed = window.confirm(
+																	'You haven\'t generated code replacements yet. Are you sure you want to leave without generating/downloading them?'
+																);
+																if (!confirmed) {
+																	return;
+																}
+															}
+															const params = new URLSearchParams({
+																homeId: teamMap[selectedTeam1],
+																homeName: selectedTeam1,
+																awayId: teamMap[selectedTeam2],
+																awayName: selectedTeam2,
+															});
+														navigate(`/metadata?${params.toString()}`);
+														}}
+													>
+														Generate XMP metadata file
 													</button>
-												</div>
+												)}												</div>
 											</form>
 											<div className="generated-extra-card">
 												<AdditionalOptions options={options} setOptions={setOptions} />
