@@ -75,9 +75,16 @@ function ManualClubSearch() {
       }
       const squad1 = await fetchClubPlayers(selectedTeam1.id);
 
-      // If Team 2 is selected, fetch players; otherwise use empty list
+      // If Team 2 is selected, fetch players and club data; otherwise use empty list
       let squad2 = { players: [] };
+      let clubData2 = null;
       if (selectedTeam2) {
+        try {
+          clubData2 = await fetchClubProfile(selectedTeam2.id);
+        } catch (error) {
+          console.error("Error fetching away club data:", error);
+          clubData2 = null;
+        }
         squad2 = await fetchClubPlayers(selectedTeam2.id);
       }
 
@@ -108,6 +115,7 @@ function ManualClubSearch() {
         additionalCodes: options.additionalCodes,
         shouldShorten: options.shouldShorten,
         clubData,
+        clubData2,
         shouldChangeGoalkeeperStyle: options.shouldChangeGoalkeeperStyle,
         includeNoNumberPlayers: options.includeNoNumberPlayers,
       });

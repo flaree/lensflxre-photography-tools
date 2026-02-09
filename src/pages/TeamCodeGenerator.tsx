@@ -94,8 +94,15 @@ export default function TeamCodeGenerator() {
 			const squad1 = await fetchClubPlayers(teamMap[selectedTeam1]);
 
 			let squad2 = { players: [] };
+			let clubData2 = null;
 			if (selectedTeam2) {
-				squad2 = await fetchClubPlayers(teamMap[selectedTeam2]);
+				try {
+					clubData2 = await fetchClubProfile(teamMap[selectedTeam2]);
+					squad2 = await fetchClubPlayers(teamMap[selectedTeam2]);
+				} catch (error) {
+					console.error("Error fetching away club data:", error);
+					clubData2 = null;
+				}
 			}
 
 			const squad1Filtered = squad1.players.map((player) => ({
@@ -111,23 +118,24 @@ export default function TeamCodeGenerator() {
 			}));
 
 			const finalCodes = generateCode({
-					squad1: squad1Filtered,
-					squad2: squad2Filtered,
-					selectedTeam1: selectedTeam1,
-					selectedTeam2: selectedTeam2 || '',
-					delimiter1,
-					delimiter2,
-					selectedFormat: options.selectedFormat,
-					sortOption: options.sortOption,
-					showAdditionalInfo: options.showAdditionalInfo,
-					referee: options.referee,
-					competition: options.competition,
-					additionalCodes: options.additionalCodes,
-					shouldShorten: options.shouldShorten,
-					clubData,
-					shouldChangeGoalkeeperStyle: options.shouldChangeGoalkeeperStyle,
-					ignoreNoNumberPlayers: !options.includeNoNumberPlayers,
-				  });
+				squad1: squad1Filtered,
+				squad2: squad2Filtered,
+				selectedTeam1: selectedTeam1,
+				selectedTeam2: selectedTeam2 || '',
+				delimiter1,
+				delimiter2,
+				selectedFormat: options.selectedFormat,
+				sortOption: options.sortOption,
+				showInfo: options.showInfo,
+				referee: options.referee,
+				competition: options.competition,
+				additionalCodes: options.additionalCodes,
+				shouldShorten: options.shouldShorten,
+				clubData,
+				clubData2,
+				shouldChangeGoalkeeperStyle: options.shouldChangeGoalkeeperStyle,
+				ignoreNoNumberPlayers: !options.includeNoNumberPlayers,
+			});
 			setGeneratedCode(finalCodes);
 			toast.success("Code generated successfully!");
 		} catch (error) {

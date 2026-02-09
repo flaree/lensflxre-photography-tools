@@ -160,10 +160,9 @@ export default function PhotoMetadata() {
     const awayName = selectedAwayClub?.name || '';
 
     const stadium = (homeProfile && (homeProfile.stadiumName)) || '';
-    const country = (homeProfile && (homeProfile.addressLine3)) || '';
 
     const title = homeName && awayName ? `${homeName} vs ${awayName}` : (homeName || awayName || 'Match');
-    const description = `during the {COMPETITION} match between ${homeName || 'Home Team'} and ${awayName || 'Away Team'}${stadium ? ' at ' + stadium : ''}${country ? ', ' + country : ''}.`;
+    const description = `during the {COMPETITION} match between ${homeName || 'Home Team'} and ${awayName || 'Away Team'}${stadium ? ' at ' + stadium : ''}.`;
     
     // Convert YYYY-MM-DD to DD/MM/YYYY for headline
     const formatDate = (dateStr) => {

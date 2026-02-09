@@ -38,6 +38,7 @@ export interface ClubProfile {
   name?: string;
   stadiumName?: string;
   addressLine3?: string;
+  manager?: string;
 }
 
 export interface LeagueClubsResponse {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import './App.css';
 import TeamCodeGenerator from './pages/TeamCodeGenerator';
+import LeagueCodeGenerator from './pages/LeagueCodeGenerator';
 import ManualClubSearch from './pages/ManualClubSearch';
 import About from './pages/About';
 import PhotoMetadata from './pages/PhotoMetadata';
@@ -28,6 +29,9 @@ function NavLinks({ onClick }: NavLinksProps): React.ReactElement {
       </li>
       <li>
         <Link to="/league" className={linkClass('/league')} onClick={onClick}>League</Link>
+      </li>
+      <li>
+        <Link to="/league-codes" className={linkClass('/league-codes')} onClick={onClick}>Full League Codes</Link>
       </li>
       <li>
         <Link to="/photo-meta" className={linkClass('/photo-meta')} onClick={onClick}>Metadata</Link>
@@ -87,6 +91,7 @@ function App(): React.ReactElement {
             <Routes>
               <Route path="/" element={<ManualClubSearch />} />
               <Route path="/league" element={<TeamCodeGenerator />} />
+              <Route path="/league-codes" element={<LeagueCodeGenerator />} />
               <Route path="/photo-meta" element={<PhotoMetadata />} />
               <Route path="/about" element={<About />} />
             </Routes>

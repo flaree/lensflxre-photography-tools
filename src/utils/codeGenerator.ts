@@ -13,6 +13,7 @@ export interface ClubData {
   stadiumName?: string;
   name?: string;
   addressLine3?: string;
+  manager?: string;
 }
 
 export interface GenerateCodeParams {
@@ -30,6 +31,7 @@ export interface GenerateCodeParams {
   additionalCodes?: string;
   shouldShorten: boolean;
   clubData?: ClubData | null;
+  clubData2?: ClubData | null;
   shouldChangeGoalkeeperStyle: boolean;
   ignoreNoNumberPlayers?: boolean;
 }
@@ -49,6 +51,7 @@ export const generateCode = ({
   additionalCodes,
   shouldShorten,
   clubData,
+  clubData2,
   shouldChangeGoalkeeperStyle,
   ignoreNoNumberPlayers,
 }: GenerateCodeParams): string => {
@@ -159,9 +162,14 @@ export const generateCode = ({
       }\nco\t${competition}\n${additionalCodes}\n\n`
     : "";
 
+  // Build team 2 info only if team 2 exists
+  const team2Info = selectedTeam2 
+    ? `${delimiter2}\t${selectedTeam2}\n${delimiter2}p\t${selectedTeam2} players\n${delimiter2}s\t${selectedTeam2} supporters\n${delimiter2}m\t${selectedTeam2} manager ${clubData2?.manager || "-"}\n`
+    : "";
+
   let finalCodes = `${additionalInfo}st\t${
     clubData?.stadiumName || "-"
-  }\n${delimiter1}\t${selectedTeam1}\n${delimiter1}p\t${selectedTeam1} players\n${delimiter1}s\t${selectedTeam1} supporters\n${delimiter2}\t${selectedTeam2}\n${delimiter2}p\t${selectedTeam2} players\n${delimiter2}s\t${selectedTeam2} supporters\n\n\n${code}`;
+  }\n${delimiter1}\t${selectedTeam1}\n${delimiter1}p\t${selectedTeam1} players\n${delimiter1}s\t${selectedTeam1} supporters\n${delimiter1}m\t${selectedTeam1} manager ${clubData?.manager || "-"}\n${team2Info}\n\n${code}`;
 
   if (shouldShorten) {
     finalCodes = finalCodes.replace(/Football Club/g, "FC");
