@@ -39,6 +39,57 @@ function About(): React.ReactElement {
               Buy me a coffee
             </a>
           </div>
+          <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid var(--border-color, #e0e0e0)' }}>
+            <h3 style={{ marginBottom: 12, fontSize: 18, fontWeight: 600 }}>Contact</h3>
+            <p style={{ marginBottom: 12 }}>
+              <strong style={{ display: 'inline-block', width: 90, color: 'var(--text-primary, #333)' }}>Instagram:</strong>
+              <a 
+                href="https://instagram.com/lensflxre" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{
+                  color: '#E1306C',
+                  fontWeight: 500,
+                  textDecoration: 'none',
+                  transition: 'opacity 0.2s',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+              >
+                @lensflxre
+              </a>
+            </p>
+            <p style={{ marginBottom: 0 }}>
+              <strong style={{ display: 'inline-block', width: 90, color: 'var(--text-primary, #333)' }}>Email:</strong>
+              <a 
+                href="mailto:jamie@jamiemcg.ie"
+                style={{
+                  color: 'var(--primary-color, #4a9eff)',
+                  fontWeight: 500,
+                  textDecoration: 'none',
+                  transition: 'opacity 0.2s',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+              >
+                jamie@jamiemcg.ie
+              </a>
+              {' or '}
+              <a 
+                href="mailto:jamie@lensflxre.com"
+                style={{
+                  color: 'var(--primary-color, #4a9eff)',
+                  fontWeight: 500,
+                  textDecoration: 'none',
+                  transition: 'opacity 0.2s',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+              >
+                jamie@lensflxre.com
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </div>
