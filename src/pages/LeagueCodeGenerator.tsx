@@ -307,11 +307,33 @@ export default function LeagueCodeGenerator() {
 
 						{teams.length > 0 && (
 							<div className="team-preview">
-								<h3>Teams in {selectedLeague} ({teams.length})</h3>
+								<h3>Teams in {selectedLeague} ({teams.length}) - Click delimiters to edit</h3>
 								<div className="delimiter-grid">
 									{teams.map(team => (
 										<div key={team} className="delimiter-item">
-											<span className="delimiter-code">{delimiters[team]}</span>
+											<input
+												type="text"
+												className="delimiter-code"
+												value={delimiters[team] || ''}
+												onChange={(e) => {
+													const newValue = e.target.value.toUpperCase();
+													setDelimiters(prev => ({
+														...prev,
+														[team]: newValue
+													}));
+												}}
+												style={{
+													cursor: 'text',
+													textAlign: 'center',
+													border: 'none',
+													outline: 'none',
+													background: 'var(--primary-color)',
+													color: 'white',
+													maxWidth: '60px',
+													flexShrink: 0,
+												}}
+												title={`Edit delimiter for ${team}`}
+											/>
 											<span className="team-name">{team}</span>
 										</div>
 									))}
