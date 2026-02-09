@@ -45,7 +45,7 @@ function ManualClubSearch() {
     includeNoNumberPlayers: true,
   });
   
-  const [showPopup, setShowPopup] = useState(true); // State to control the visibility of the popup
+  // const [showPopup, setShowPopup] = useState(true); // State to control the visibility of the popup
   const navigate = useNavigate();
 
   const handleSearch = async (searchTerm, setResults, resetSelection, setSearching) => {
