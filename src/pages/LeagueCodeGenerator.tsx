@@ -40,7 +40,7 @@ const generateDelimiters = (teamNames: string[]): Record<string, string> => {
 		
 		// Try increasing lengths until we find a unique delimiter
 		while (length <= teamName.length) {
-			delimiter = teamName.substring(0, length).toUpperCase();
+			delimiter = teamName.substring(0, length).toLowerCase();
 			
 			if (!usedDelimiters.has(delimiter)) {
 				break;
@@ -314,9 +314,9 @@ export default function LeagueCodeGenerator() {
 											<input
 												type="text"
 												className="delimiter-code"
-												value={delimiters[team] || ''}
+												value={(delimiters[team] || '').toUpperCase()}
 												onChange={(e) => {
-													const newValue = e.target.value.toUpperCase();
+													const newValue = e.target.value.toLowerCase();
 													setDelimiters(prev => ({
 														...prev,
 														[team]: newValue
