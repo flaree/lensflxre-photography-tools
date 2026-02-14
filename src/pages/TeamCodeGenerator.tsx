@@ -316,11 +316,16 @@ export default function TeamCodeGenerator() {
 																className="btn btn-secondary"
 																type="button"
 																onClick={() => {
-																	const teamName = selectedTeam1 || 'team';
-																	const blob = new Blob([generatedCode], { type: 'text/plain;charset=utf-8' });
-																	const link = document.createElement('a');
-																	link.href = URL.createObjectURL(blob);
-																	link.download = `${teamName}_code_replacements.txt`;
+																const homeTeam = selectedTeam1 || 'team';
+																const awayTeam = selectedTeam2 || 'team';
+																const fixtureDate = options.selectedDate;
+																const filename = fixtureDate 
+																	? `${fixtureDate}-${homeTeam}-v-${awayTeam}.txt`
+																	: `${homeTeam}-v-${awayTeam}.txt`;
+																const blob = new Blob([generatedCode], { type: 'text/plain;charset=utf-8' });
+																const link = document.createElement('a');
+																link.href = URL.createObjectURL(blob);
+																link.download = filename;
 																	link.click();
 																}}
 															>

@@ -34,7 +34,7 @@ function NavLinks({ onClick }: NavLinksProps): React.ReactElement {
         <Link to="/league-codes" className={linkClass('/league-codes')} onClick={onClick}>Full League Codes</Link>
       </li>
       <li>
-        <Link to="/photo-meta" className={linkClass('/photo-meta')} onClick={onClick}>Metadata</Link>
+        <Link to="/metadata" className={linkClass('/metadata')} onClick={onClick}>Metadata</Link>
       </li>
       <li>
         <Link to="/about" className={linkClass('/about')} onClick={onClick}>About</Link>
@@ -92,7 +92,7 @@ function App(): React.ReactElement {
               <Route path="/" element={<ManualClubSearch />} />
               <Route path="/league" element={<TeamCodeGenerator />} />
               <Route path="/league-codes" element={<LeagueCodeGenerator />} />
-              <Route path="/photo-meta" element={<PhotoMetadata />} />
+              <Route path="/metadata" element={<PhotoMetadata />} />
               <Route path="/about" element={<About />} />
             </Routes>
           </div>

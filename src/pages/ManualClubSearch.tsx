@@ -357,11 +357,16 @@ function ManualClubSearch() {
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => {
-                    const teamName = selectedTeam1 ? selectedTeam1.name : 'team';
+                    const homeTeam = selectedTeam1 ? selectedTeam1.name : 'team';
+                    const awayTeam = selectedTeam2 ? selectedTeam2.name : 'team';
+                    const fixtureDate = options.selectedDate;
+                    const filename = fixtureDate 
+                      ? `${fixtureDate}-${homeTeam}-v-${awayTeam}.txt`
+                      : `${homeTeam}-v-${awayTeam}.txt`;
                     const blob = new Blob([generatedCode], { type: 'text/plain;charset=utf-8' });
                     const link = document.createElement('a');
                     link.href = URL.createObjectURL(blob);
-                    link.download = `${teamName}_code_replacements.txt`;
+                    link.download = filename;
                     link.click();
                   }}
                 >
