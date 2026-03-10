@@ -138,6 +138,19 @@ export default function PhotoMetadata() {
     }
   }, []);
 
+  // Normalize keywords to lowercase on load
+  useEffect(() => {
+    if (meta.keywords) {
+      const normalized = meta.keywords
+        .split(',')
+        .map(k => k.trim().toLowerCase())
+        .join(', ');
+      if (normalized !== meta.keywords) {
+        setMeta(prev => ({ ...prev, keywords: normalized }));
+      }
+    }
+  }, []); // Run once on mount
+
   // keep checkToday in sync with dateCreated
   useEffect(() => {
     const today = getTodayISO();
@@ -198,7 +211,7 @@ export default function PhotoMetadata() {
     setMeta((prev) => ({
       ...prev,
       objectName: title,
-      headline: `${formatDate(prev.dateCreated)} - ${homeName || 'Home Team'} -v- ${awayName || 'Away Team'}`,
+      headline: `${homeName || 'Home Team'} -v- ${awayName || 'Away Team'}`,
       description: description,
       country: country || prev.country,
       stadium: stadium || prev.stadium,
@@ -238,7 +251,7 @@ export default function PhotoMetadata() {
       
       setMeta((prev) => ({
         ...prev,
-        headline: `${formatDate(prev.dateCreated)} - ${homeName || 'Home Team'} -v- ${awayName || 'Away Team'}`,
+        headline: `${homeName || 'Home Team'} -v- ${awayName || 'Away Team'}`,
       }));
     }
   }, [meta.dateCreated, selectedHomeClub, selectedAwayClub]);
