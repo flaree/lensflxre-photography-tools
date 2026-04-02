@@ -140,15 +140,14 @@ export default function PhotoMetadata() {
 
   // Normalize keywords to lowercase on load
   useEffect(() => {
-    if (meta.keywords) {
-      const normalized = meta.keywords
+    setMeta(prev => {
+      if (!prev.keywords) return prev;
+      const normalized = prev.keywords
         .split(',')
         .map(k => k.trim().toLowerCase())
         .join(', ');
-      if (normalized !== meta.keywords) {
-        setMeta(prev => ({ ...prev, keywords: normalized }));
-      }
-    }
+      return normalized !== prev.keywords ? { ...prev, keywords: normalized } : prev;
+    });
   }, []); // Run once on mount
 
   // keep checkToday in sync with dateCreated
@@ -182,6 +181,13 @@ export default function PhotoMetadata() {
     toast.success('Saved Creator & Rights cleared');
   };
 
+  const formatDisplayDate = (dateStr: string) => {
+    if (!dateStr) {return '';}
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
   const applyClubToMeta = useCallback(async () => {
     // Build headline/title/description from selected home/away clubs using profile data when available
     if (!selectedHomeClub && !selectedAwayClub) {
@@ -199,19 +205,12 @@ export default function PhotoMetadata() {
     const title = homeName && awayName ? `${homeName} vs ${awayName}` : (homeName || awayName || 'Match');
     const description = `during the {COMPETITION} match between ${homeName || 'Home Team'} and ${awayName || 'Away Team'}${stadium ? ' at ' + stadium : ''}.`;
     
-    // Convert YYYY-MM-DD to DD/MM/YYYY for headline
-    const formatDate = (dateStr) => {
-      if (!dateStr) {
-        return '';
-      }
-      const [year, month, day] = dateStr.split('-');
-      return `${day}/${month}/${year}`;
-    };
-    
-    setMeta((prev) => ({
+    setMeta((prev) => {
+      const dateSuffix = prev.dateCreated ? ` (${formatDisplayDate(prev.dateCreated)})` : '';
+      return {
       ...prev,
-      objectName: title,
-      headline: `${homeName || 'Home Team'} -v- ${awayName || 'Away Team'}`,
+      objectName: title + dateSuffix,
+      headline: `${homeName || 'Home Team'} -v- ${awayName || 'Away Team'}${dateSuffix}`,
       description: description,
       country: country || prev.country,
       stadium: stadium || prev.stadium,
@@ -226,7 +225,8 @@ export default function PhotoMetadata() {
         });
         return allKeywords.join(', ');
       })(),
-    }));
+    };
+    });
   }, [selectedHomeClub, selectedAwayClub]);
 
   // Auto-apply club metadata when selections change
@@ -238,21 +238,18 @@ export default function PhotoMetadata() {
 
   useEffect(() => {
     if ((selectedHomeClub || selectedAwayClub) && meta.dateCreated) {
-      const formatDate = (dateStr) => {
-        if (!dateStr) {
-          return '';
-        }
-        const [year, month, day] = dateStr.split('-');
-        return `${day}/${month}/${year}`;
-      };
-      
       const homeName = selectedHomeClub?.name || '';
       const awayName = selectedAwayClub?.name || '';
       
-      setMeta((prev) => ({
-        ...prev,
-        headline: `${homeName || 'Home Team'} -v- ${awayName || 'Away Team'}`,
-      }));
+      setMeta((prev) => {
+        const dateSuffix = prev.dateCreated ? ` (${formatDisplayDate(prev.dateCreated)})` : '';
+        const baseTitle = homeName && awayName ? `${homeName} vs ${awayName}` : (homeName || awayName || 'Match');
+        return {
+          ...prev,
+          objectName: baseTitle + dateSuffix,
+          headline: `${homeName || 'Home Team'} -v- ${awayName || 'Away Team'}${dateSuffix}`,
+        };
+      });
     }
   }, [meta.dateCreated, selectedHomeClub, selectedAwayClub]);
 
