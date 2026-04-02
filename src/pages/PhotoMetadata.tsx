@@ -1,10 +1,89 @@
 // @ts-nocheck - TODO: Add proper TypeScript types
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import './codegen.css';
 import { escapeXml, copyToClipboard, downloadTextFile, getTodayISO } from '../utils/helpers';
 import { searchClubs, fetchClubProfile } from '../services/api';
 import toast, { Toaster } from 'react-hot-toast';
+
+const COMMON_COMPETITIONS = [
+  'LOI Premier Division', 'LOI First Division', 'Scottish Premiership', 'Scottish Championship', 'Scottish Cup', 'League Cup',
+  'Premier League', 'Championship', 'FA Cup', 'Carabao Cup',
+  'UEFA Champions League', 'UEFA Europa League', 'UEFA Conference League',
+  'La Liga', 'Bundesliga', 'Serie A', 'Ligue 1', 'Eredivisie',
+  'World Cup', 'European Championship',
+];
+
+function readIptcTags(data) {
+  const fields = {};
+  const decoder = new TextDecoder('utf-8');
+  let i = 0;
+  while (i < data.length - 4) {
+    if (data[i] !== 0x1C) { i++; continue; }
+    const record = data[i + 1];
+    const tag    = data[i + 2];
+    const size   = (data[i + 3] << 8) | data[i + 4];
+    i += 5;
+    if (record === 2) {
+      const val = decoder.decode(data.slice(i, i + size));
+      switch (tag) {
+        case 5:   fields.objectName  = val; break;
+        case 25:  fields.keywords    = fields.keywords ? fields.keywords + ', ' + val : val; break;
+        case 55:  fields.dateCreated = val.length === 8 ? `${val.slice(0,4)}-${val.slice(4,6)}-${val.slice(6,8)}` : val; break;
+        case 80:  fields.byline      = val; break;
+        case 90:  fields.city        = val; break;
+        case 92:  if (!fields.state) { fields.state = val; } break;
+        case 95:  fields.state       = fields.state || val; break;
+        case 101: fields.country     = val; break;
+        case 103: fields.jobId       = val; break;
+        case 105: fields.headline    = val; break;
+        case 110: fields.credit      = val; break;
+        case 115: fields.source      = val; break;
+        case 116: fields.copyright   = val; break;
+        case 120: fields.description = val; break;
+        default: break;
+      }
+    }
+    i += size;
+  }
+  return fields;
+}
+
+function parseIptcFromJpeg(buffer) {
+  const data = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+  if (view.getUint16(0) !== 0xFFD8) { return null; }
+  let offset = 2;
+  while (offset < data.length - 1) {
+    if (data[offset] !== 0xFF) { break; }
+    const marker = data[offset + 1];
+    if (marker === 0xD8 || marker === 0xD9) { offset += 2; continue; }
+    if (marker === 0xFF) { offset++; continue; }
+    const segLen = view.getUint16(offset + 2);
+    if (marker === 0xED) {
+      let pos = offset + 4;
+      const end = offset + 2 + segLen;
+      const hdr = String.fromCharCode(...data.slice(pos, pos + 13));
+      if (hdr === 'Photoshop 3.0') {
+        pos += 14;
+        while (pos < end - 7) {
+          const bim = String.fromCharCode(data[pos], data[pos+1], data[pos+2], data[pos+3]);
+          if (bim !== '8BIM') { break; }
+          pos += 4;
+          const resType = (data[pos] << 8) | data[pos + 1];
+          pos += 2;
+          const nameLen = data[pos];
+          pos += (nameLen % 2 === 0 ? nameLen + 2 : nameLen + 1);
+          const resLen = view.getUint32(pos); pos += 4;
+          if (resType === 0x0404) { return readIptcTags(data.slice(pos, pos + resLen)); }
+          pos += resLen + (resLen % 2);
+        }
+      }
+    }
+    offset += 2 + segLen;
+  }
+  return null;
+}
 
 export default function PhotoMetadata() {
   const [searchParams] = useSearchParams();
@@ -81,6 +160,16 @@ export default function PhotoMetadata() {
   const [selectedHomeClub, setSelectedHomeClub] = useState(null);
   const [selectedAwayClub, setSelectedAwayClub] = useState(null);
   const [checkToday, setCheckToday] = useState(false);
+  const [competition, setCompetition] = useState('');
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [templates, setTemplates] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('photo_meta_templates') || '[]'); }
+    catch { return []; }
+  });
+  const exifInputRef = useRef(null);
+  const competitionRef = useRef('');
+  const prevCompetitionRef = useRef('');
 
   // Handle URL parameters for pre-filling teams
   useEffect(() => {
@@ -181,6 +270,61 @@ export default function PhotoMetadata() {
     toast.success('Saved Creator & Rights cleared');
   };
 
+  const applyTemplate = (t) => {
+    if (t.competition) { setCompetition(t.competition); }
+    setMeta(prev => ({
+      ...prev,
+      ...(t.byline    && { byline: t.byline }),
+      ...(t.credit    && { credit: t.credit }),
+      ...(t.copyright && { copyright: t.copyright }),
+      ...(t.source    && { source: t.source }),
+    }));
+    toast.success(`Template "${t.name}" applied`);
+  };
+
+  const deleteTemplate = (index) => {
+    const updated = templates.filter((_, i) => i !== index);
+    setTemplates(updated);
+    try { localStorage.setItem('photo_meta_templates', JSON.stringify(updated)); } catch (e) { /* ignore */ }
+    toast.success('Template deleted');
+  };
+
+  const saveTemplate = () => {
+    if (!templateName.trim()) { toast.error('Enter a template name'); return; }
+    const t = {
+      name: templateName.trim(),
+      competition,
+      byline:    meta.byline,
+      credit:    meta.credit,
+      copyright: meta.copyright,
+      source:    meta.source,
+    };
+    const updated = [...templates.filter(x => x.name !== t.name), t];
+    setTemplates(updated);
+    try { localStorage.setItem('photo_meta_templates', JSON.stringify(updated)); } catch (e) { /* ignore */ }
+    setTemplateName('');
+    toast.success(`Template "${t.name}" saved`);
+  };
+
+  const handleExifImport = (file) => {
+    if (!file) { return; }
+    if (!file.type.includes('jpeg') && !file.type.includes('jpg')) {
+      toast.error('Please select a JPEG file');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const parsed = parseIptcFromJpeg(ev.target.result);
+      if (!parsed || Object.keys(parsed).length === 0) {
+        toast.error('No IPTC data found in this file');
+        return;
+      }
+      setMeta(prev => ({ ...prev, ...parsed }));
+      toast.success('IPTC metadata imported');
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
   const formatDisplayDate = (dateStr: string) => {
     if (!dateStr) {return '';}
     const [year, month, day] = dateStr.split('-').map(Number);
@@ -203,7 +347,7 @@ export default function PhotoMetadata() {
     const country = selectedHomeClub?.country || (homeProfile && homeProfile.country) || '';
 
     const title = homeName && awayName ? `${homeName} vs ${awayName}` : (homeName || awayName || 'Match');
-    const description = `during the {COMPETITION} match between ${homeName || 'Home Team'} and ${awayName || 'Away Team'}${stadium ? ' at ' + stadium : ''}.`;
+    const description = `during the ${competitionRef.current || '{COMPETITION}'} match between ${homeName || 'Home Team'} and ${awayName || 'Away Team'}${stadium ? ' at ' + stadium : ''}.`;
     
     setMeta((prev) => {
       const dateSuffix = prev.dateCreated ? ` (${formatDisplayDate(prev.dateCreated)})` : '';
@@ -216,7 +360,7 @@ export default function PhotoMetadata() {
       stadium: stadium || prev.stadium,
 	  keywords: (() => {
         const existingKeywords = prev.keywords ? prev.keywords.split(',').map(k => k.trim()) : [];
-        const newKeywords = [homeName, awayName, stadium, country].filter(Boolean);
+        const newKeywords = [homeName, awayName, stadium, country, competitionRef.current].filter(Boolean);
         const allKeywords = [...existingKeywords];
         newKeywords.forEach(kw => {
           if (!allKeywords.some(existing => existing.toLowerCase() === kw.toLowerCase())) {
@@ -253,6 +397,30 @@ export default function PhotoMetadata() {
     }
   }, [meta.dateCreated, selectedHomeClub, selectedAwayClub]);
 
+  // Keep competitionRef current so it can be read inside useCallback without triggering re-fetch
+  useEffect(() => {
+    competitionRef.current = competition;
+  }, [competition]);
+
+  // Update description placeholder and keywords whenever competition changes
+  useEffect(() => {
+    const prev = prevCompetitionRef.current;
+    prevCompetitionRef.current = competition;
+    setMeta(m => {
+      const toReplace = prev || '{COMPETITION}';
+      let desc = m.description;
+      if (toReplace && desc.includes(toReplace)) {
+        desc = desc.replace(toReplace, competition || '{COMPETITION}');
+      }
+      let kws = m.keywords ? m.keywords.split(',').map(k => k.trim()).filter(Boolean) : [];
+      if (prev) { kws = kws.filter(k => k.toLowerCase() !== prev.toLowerCase()); }
+      if (competition && !kws.some(k => k.toLowerCase() === competition.toLowerCase())) {
+        kws.push(competition);
+      }
+      return { ...m, description: desc, keywords: kws.join(', ') };
+    });
+  }, [competition]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
   <div className="generated-code-page container-page">
     <Toaster position="top-right" />
@@ -272,6 +440,28 @@ export default function PhotoMetadata() {
       Keywords should be comma-separated. Creator & rights can be saved for reuse across sessions.
       </p>
       <div className="generated-inline-row" style={{ justifyContent: 'flex-end' }}>
+      <input
+        ref={exifInputRef}
+        type="file"
+        accept="image/jpeg"
+        aria-label="Import JPEG file"
+        style={{ display: 'none' }}
+        onChange={(e) => { handleExifImport(e.target.files?.[0]); e.target.value = ''; }}
+      />
+      <button
+        type="button"
+        className="btn btn-ghost"
+        onClick={() => exifInputRef.current?.click()}
+      >
+        Import from JPEG
+      </button>
+      <button
+        type="button"
+        className="btn btn-ghost"
+        onClick={() => setShowTemplates((s) => !s)}
+      >
+        {showTemplates ? 'Hide templates' : 'Templates'}
+      </button>
       <button
         type="button"
         className="btn btn-secondary"
@@ -280,6 +470,60 @@ export default function PhotoMetadata() {
         {showClubSearch ? 'Hide club search' : 'Use club search'}
       </button>
       </div>
+    </div>
+
+    {showTemplates && (
+      <div className="card" style={{ padding: 14, marginBottom: 16 }}>
+        <div className="generated-section-title">Templates</div>
+        {templates.length === 0 ? (
+          <p className="muted" style={{ margin: '8px 0 12px' }}>No saved templates yet. Fill in competition and creator &amp; rights fields below, then save.</p>
+        ) : (
+          <div style={{ marginBottom: 12 }}>
+            {templates.map((t) => (
+              <div key={t.name} className="generated-inline-row" style={{ marginBottom: 6 }}>
+                <span style={{ flex: 1, fontSize: 14 }}>{t.name}{t.competition ? ` · ${t.competition}` : ''}</span>
+                <button type="button" className="btn btn-secondary" style={{ padding: '2px 12px', fontSize: 12 }} onClick={() => applyTemplate(t)}>Apply</button>
+                <button type="button" className="btn btn-ghost" style={{ padding: '2px 12px', fontSize: 12 }} onClick={() => deleteTemplate(i)}>Delete</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+          <label className="field-label">Save current settings as template</label>
+          <div className="generated-inline-row">
+            <input
+              className="input"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && saveTemplate()}
+              placeholder="Template name (e.g. Scottish Premiership)"
+            />
+            <button type="button" className="btn btn-secondary" onClick={saveTemplate}>Save</button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    <div className="card" style={{ padding: 14, marginBottom: 16 }}>
+      <div className="generated-section-title">Competition</div>
+      <div className="generated-inline-row">
+        <input
+          className="input"
+          list="competition-datalist"
+          value={competition}
+          onChange={(e) => setCompetition(e.target.value)}
+          placeholder="e.g. Scottish Premiership"
+          title="Competition"
+        />
+        {competition && (
+          <button type="button" className="btn btn-ghost" onClick={() => setCompetition('')}>Clear</button>
+        )}
+      </div>
+      <datalist id="competition-datalist">
+        {COMMON_COMPETITIONS.map((c) => (
+          <option key={c} value={c} />
+        ))}
+      </datalist>
     </div>
 
     {showClubSearch && (
@@ -551,6 +795,14 @@ export default function PhotoMetadata() {
         source: '',
         stadium: '',
         });
+        setCompetition('');
+        setSelectedHomeClub(null);
+        setSelectedAwayClub(null);
+        setHomeResults([]);
+        setAwayResults([]);
+        setHomeSearchTerm('');
+        setAwaySearchTerm('');
+        setCheckToday(false);
       }}
       >
       Clear

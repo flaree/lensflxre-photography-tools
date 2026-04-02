@@ -201,7 +201,7 @@ function ManualClubSearch() {
                 onChange={(e) => {
                   const selected = teamResults1.find((team) => team.id === e.target.value);
                   setSelectedTeam1(selected || null);
-                  setDelimiter1(selected?.name[0]?.toLowerCase() || '');
+                  if (!delimiter1) {setDelimiter1(selected?.name[0]?.toLowerCase() || '');}
                 }}
               >
                 <option value="" disabled>
@@ -274,7 +274,7 @@ function ManualClubSearch() {
                     onChange={(e) => {
                       const selected = teamResults2.find((team) => team.id === e.target.value);
                       setSelectedTeam2(selected || null);
-                      setDelimiter2(selected?.name[0]?.toLowerCase() || '');
+                      if (!delimiter2) {setDelimiter2(selected?.name[0]?.toLowerCase() || '');}
                     }}
                   >
                     <option value="" disabled>
@@ -307,12 +307,17 @@ function ManualClubSearch() {
         <div className="generated-extra-card">
           <AdditionalOptions options={options} setOptions={setOptions} />
         </div>
+        {delimiter1 && delimiter2 && selectedTeam2 && delimiter1 === delimiter2 && (
+          <p className="muted" style={{ color: 'var(--error, #d32f2f)', margin: '8px 0 0', fontSize: 13 }}>
+            Delimiters must be different — both teams are using “{delimiter1}”.
+          </p>
+        )}
         <div className="btn-row">
           <button
             type="button"
             className="btn"
             onClick={handleGenerate}
-            disabled={loading || !selectedTeam1}
+            disabled={loading || !selectedTeam1 || (!!delimiter1 && !!delimiter2 && !!selectedTeam2 && delimiter1 === delimiter2)}
           >
             {loading ? 'Generating code replacements...' : 'Generate code replacements'}
           </button>

@@ -2,6 +2,30 @@ import { API_BASE_URL } from '../constants/config';
 
 const REQUEST_TIMEOUT = 30000;
 
+// ---------------------------------------------------------------------------
+// Simple in-memory TTL cache (5 minutes)
+// ---------------------------------------------------------------------------
+const CACHE_TTL = 5 * 60 * 1000;
+
+interface CacheEntry<T> {
+  data: T;
+  expiry: number;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const apiCache = new Map<string, CacheEntry<any>>();
+
+function getCached<T>(key: string): T | null {
+  const entry = apiCache.get(key) as CacheEntry<T> | undefined;
+  if (!entry) { return null; }
+  if (Date.now() > entry.expiry) { apiCache.delete(key); return null; }
+  return entry.data;
+}
+
+function setCached<T>(key: string, data: T): void {
+  apiCache.set(key, { data, expiry: Date.now() + CACHE_TTL });
+}
+
 const fetchWithTimeout = async (url: string, timeout = REQUEST_TIMEOUT): Promise<Response> => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -54,11 +78,16 @@ export interface SearchResponse {
 }
 
 export const fetchLeagueClubs = async (competitionCode: string): Promise<LeagueClubsResponse> => {
+  const key = `league:${competitionCode}`;
+  const cached = getCached<LeagueClubsResponse>(key);
+  if (cached) { return cached; }
   const response = await fetchWithTimeout(`${API_BASE_URL}/competitions/${competitionCode}/clubs`);
   if (!response.ok) {
     throw new Error(`Failed to fetch clubs for competition ${competitionCode}`);
   }
-  return response.json();
+  const data = await response.json();
+  setCached(key, data);
+  return data;
 };
 
 /**
@@ -67,11 +96,16 @@ export const fetchLeagueClubs = async (competitionCode: string): Promise<LeagueC
  * @returns Club profile data
  */
 export const fetchClubProfile = async (clubId: string): Promise<ClubProfile> => {
+  const key = `profile:${clubId}`;
+  const cached = getCached<ClubProfile>(key);
+  if (cached) { return cached; }
   const response = await fetchWithTimeout(`${API_BASE_URL}/clubs/${clubId}/profile`);
   if (!response.ok) {
     throw new Error(`Failed to fetch profile for club ${clubId}`);
   }
-  return response.json();
+  const data = await response.json();
+  setCached(key, data);
+  return data;
 };
 
 /**
@@ -80,11 +114,16 @@ export const fetchClubProfile = async (clubId: string): Promise<ClubProfile> => 
  * @returns Response containing players array
  */
 export const fetchClubPlayers = async (clubId: string): Promise<PlayersResponse> => {
+  const key = `players:${clubId}`;
+  const cached = getCached<PlayersResponse>(key);
+  if (cached) { return cached; }
   const response = await fetchWithTimeout(`${API_BASE_URL}/clubs/${clubId}/players`);
   if (!response.ok) {
     throw new Error(`Failed to fetch players for club ${clubId}`);
   }
-  return response.json();
+  const data = await response.json();
+  setCached(key, data);
+  return data;
 };
 
 /**

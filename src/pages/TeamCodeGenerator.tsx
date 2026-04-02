@@ -178,6 +178,8 @@ export default function TeamCodeGenerator() {
 																setSelectedLeague(e.target.value);
 																setSelectedTeam1('');
 																setSelectedTeam2('');
+																setDelimiter1('');
+																setDelimiter2('');
 															}}
 															required
 														>
@@ -203,7 +205,7 @@ export default function TeamCodeGenerator() {
 																		value={selectedTeam1}
 																		onChange={(e) => {
 																			setSelectedTeam1(e.target.value);
-																			setDelimiter1(e.target.value[0]?.toLowerCase() || '');
+																			if (!delimiter1) {setDelimiter1(e.target.value[0]?.toLowerCase() || '');}
 																		}}
 																		required
 																	>
@@ -239,7 +241,7 @@ export default function TeamCodeGenerator() {
 																		value={selectedTeam2}
 																		onChange={(e) => {
 																			setSelectedTeam2(e.target.value);
-																			setDelimiter2(e.target.value[0]?.toLowerCase() || '');
+																			if (!delimiter2) {setDelimiter2(e.target.value[0]?.toLowerCase() || '');}
 																		}}
 																	>
 																		<option value="" disabled>
@@ -267,11 +269,16 @@ export default function TeamCodeGenerator() {
 														</div>
 													)}
 												</div>
+												{delimiter1 && delimiter2 && delimiter1 === delimiter2 && (
+													<p className="muted" style={{ color: 'var(--error, #d32f2f)', margin: '8px 0 0', fontSize: 13 }}>
+														Delimiters must be different — both teams are using “{delimiter1}”.
+													</p>
+												)}
 												<div className="btn-row" style={{ marginTop: 18 }}>
 													<button
 														type="submit"
 														className="btn"
-														disabled={loading || !selectedTeam1}
+														disabled={loading || !selectedTeam1 || (!!delimiter1 && !!delimiter2 && delimiter1 === delimiter2)}
 													>
 														{loading ? 'Generating code replacements...' : 'Generate code replacements'}
 													</button>												{selectedTeam1 && selectedTeam2 && (
