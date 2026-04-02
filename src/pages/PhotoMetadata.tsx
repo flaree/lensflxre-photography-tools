@@ -141,7 +141,7 @@ export default function PhotoMetadata() {
   // Normalize keywords to lowercase on load
   useEffect(() => {
     setMeta(prev => {
-      if (!prev.keywords) return prev;
+      if (!prev.keywords) {return prev;}
       const normalized = prev.keywords
         .split(',')
         .map(k => k.trim().toLowerCase())
