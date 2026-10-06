@@ -301,7 +301,7 @@
    The code column stays pinned while it does. */
 .ledger-line {
 	display: grid;
-	grid-template-columns: 3px 78px auto;
+	grid-template-columns: 3px 78px 1fr 28px;
 	align-items: baseline;
 	width: max-content;
 	min-width: 100%;
@@ -337,6 +337,112 @@
 	padding-right: 16px;
 	color: var(--text);
 	white-space: pre;
+}
+
+/* The code cell is a button (or, while editing, an input) — strip the form
+   control chrome so it looks exactly like the plain cell it replaces. */
+.ledger-line-code-button,
+.ledger-line-code-input {
+	margin: 0;
+	border-top: 0;
+	border-bottom: 0;
+	border-left: 0;
+	font: inherit;
+	font-weight: 600;
+	text-align: left;
+}
+
+.ledger-line-code-button {
+	cursor: text;
+}
+
+.ledger-line-code-button:hover {
+	text-decoration: underline dotted;
+	text-underline-offset: 3px;
+}
+
+.ledger-line-code-button:focus-visible {
+	outline: 2px solid var(--signal);
+	outline-offset: -2px;
+}
+
+.ledger-line-code-input {
+	width: 78px;
+	min-width: 0;
+	box-sizing: border-box;
+	color: var(--text);
+	outline: 2px solid var(--signal);
+	outline-offset: -2px;
+}
+
+/* A hand-edited code keeps its kit colour but is marked, so it is clear the
+   file no longer matches what was generated. */
+.ledger-line-edited .ledger-line-code {
+	font-style: italic;
+}
+
+.ledger-line-edited .ledger-line-code::after {
+	content: '*';
+	color: var(--signal);
+}
+
+/* Remove button: pinned to the right edge so it stays in reach when a long
+   caption scrolls the file sideways. Hidden until the line is hovered or
+   focused, except on touch screens where there is no hover to reveal it. */
+.ledger-line-remove,
+.ledger-line-remove-slot {
+	position: sticky;
+	right: 0;
+	z-index: 1;
+	align-self: stretch;
+	background: var(--field);
+}
+
+.ledger-line-remove {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: 0;
+	color: var(--text-dim);
+	font: inherit;
+	font-size: 15px;
+	line-height: 1;
+	cursor: pointer;
+	opacity: 0;
+}
+
+.ledger-line:hover .ledger-line-remove,
+.ledger-line-remove:focus-visible {
+	opacity: 1;
+}
+
+.ledger-line-remove:hover,
+.ledger-line-remove:focus-visible {
+	color: var(--signal);
+}
+
+.ledger-line-remove:focus-visible {
+	outline: 2px solid var(--signal);
+	outline-offset: -2px;
+}
+
+@media (hover: none) {
+	.ledger-line-remove {
+		opacity: 0.6;
+	}
+}
+
+.ledger-restore {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--signal);
+	font: inherit;
+	font-size: 12px;
+	cursor: pointer;
+	text-decoration: underline;
+	text-underline-offset: 2px;
 }
 
 /* A blank line in the file is structure, so it keeps its height and its rule. */

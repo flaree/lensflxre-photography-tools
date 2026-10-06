@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import CopyButton from './CopyButton';
 import CacheStatusBadge from './CacheStatusBadge';
 import { downloadTextFile } from '../utils/helpers';
@@ -9,7 +9,11 @@ type Side = 'home' | 'away' | null;
 
 interface Line {
   kind: LineKind;
+  /** The line as the generator wrote it — the key its removal or edit is remembered under. */
+  source: string;
   code: string;
+  /** True when the code has been edited by hand. */
+  edited: boolean;
   text: string;
   side: Side;
   /** True when another line in the file claims the same code. */
@@ -25,9 +29,13 @@ interface Line {
  * each line gets its kit colour. Keys can be one or two characters, so this
  * checks the longer of the two team keys first — if one key happens to be a
  * prefix of the other, the more specific match wins.
+ *
+ * Hand edits are applied on the way through: a line overridden with `null`
+ * is dropped, one overridden with a string gets that as its code.
  */
 const parseLines = (
   code: string,
+  overrides: Map<string, string | null>,
   homePrefix: string,
   awayPrefix: string,
   namePrefix: string,
@@ -55,23 +63,30 @@ const parseLines = (
     return bySize.find((entry) => stripped.startsWith(entry.prefix))?.side ?? null;
   };
 
-  const lines: Line[] = code.split('\n').map((line) => {
-    if (!line.trim()) {
-      return { kind: 'blank' as const, code: '', text: '', side: null, duplicate: false };
-    }
-    const tab = line.indexOf('\t');
-    if (tab === -1) {
-      return { kind: 'raw' as const, code: '', text: line, side: null, duplicate: false };
-    }
-    const codeCell = line.slice(0, tab);
-    return {
-      kind: 'entry' as const,
-      code: codeCell,
-      text: line.slice(tab + 1),
-      side: sideOf(codeCell),
-      duplicate: false,
-    };
-  });
+  const plain = { edited: false, side: null, duplicate: false };
+  const lines: Line[] = code
+    .split('\n')
+    .filter((line) => overrides.get(line) !== null)
+    .map((line) => {
+      if (!line.trim()) {
+        return { ...plain, kind: 'blank' as const, source: line, code: '', text: '' };
+      }
+      const tab = line.indexOf('\t');
+      if (tab === -1) {
+        return { ...plain, kind: 'raw' as const, source: line, code: '', text: line };
+      }
+      const override = overrides.get(line);
+      const codeCell = override ?? line.slice(0, tab);
+      return {
+        kind: 'entry' as const,
+        source: line,
+        code: codeCell,
+        edited: override !== undefined,
+        text: line.slice(tab + 1),
+        side: sideOf(codeCell),
+        duplicate: false,
+      };
+    });
 
   // Photo Mechanic keeps one replacement per code, so a code claimed twice
   // means one of the two silently never fires. Codes are compared as written:
@@ -89,6 +104,10 @@ const parseLines = (
       : line
   );
 };
+
+/** A parsed line back as a line of the file. */
+const lineToText = (line: Line): string =>
+  line.kind === 'entry' ? `${line.code}\t${line.text}` : line.text;
 
 /** Caption-column widths for the empty file, in px. A 0 marks a blank line. */
 const GHOST_ROWS = [260, 190, 300, 0, 215, 275, 165, 240, 0, 265, 200, 285, 175, 250];
@@ -136,9 +155,71 @@ export default function CodeLedger({
 }: CodeLedgerProps): React.ReactElement {
   // Matches the generator's own fallback for a cleared mark field.
   const namePrefix = rawNamePrefix || '.';
+
+  /**
+   * Hand changes to the file: `null` for a line taken out, a string for a
+   * line whose code was rewritten. Keyed by the line as the generator wrote
+   * it rather than its position — flipping an option regenerates the file and
+   * shifts everything down, but "am<TAB>Arsenal FC manager Mikel Arteta" is
+   * still the line that was changed. A new squad is a new file, so the slate
+   * is wiped then.
+   */
+  const [overrides, setOverrides] = useState<Map<string, string | null>>(() => new Map());
+  useEffect(() => {
+    setOverrides(new Map());
+  }, [generation]);
+
+  const setOverride = (source: string, value: string | null | undefined) =>
+    setOverrides((previous) => {
+      const next = new Map(previous);
+      if (value === undefined) {
+        next.delete(source);
+      } else {
+        next.set(source, value);
+      }
+      return next;
+    });
+
+  /** The line whose code is open for editing, by its source line. */
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+
+  const startEdit = (line: Line) => {
+    setEditing(line.source);
+    setDraft(line.code);
+  };
+
+  /**
+   * Save the edited code. Tabs and line breaks would break the file's shape,
+   * so all whitespace goes. Clearing the box, or typing the original code
+   * back in, drops the edit rather than leaving an empty or no-op override.
+   */
+  const commitEdit = () => {
+    if (editing === null) {
+      return;
+    }
+    const value = draft.replace(/\s+/g, '');
+    const original = editing.slice(0, editing.indexOf('\t'));
+    setOverride(editing, value && value !== original ? value : undefined);
+    setEditing(null);
+  };
+
   const lines = useMemo(
-    () => parseLines(code, homePrefix, awayPrefix, namePrefix, namePosition),
-    [code, homePrefix, awayPrefix, namePrefix, namePosition]
+    () => parseLines(code, overrides, homePrefix, awayPrefix, namePrefix, namePosition),
+    [code, overrides, homePrefix, awayPrefix, namePrefix, namePosition]
+  );
+
+  // What actually ships: on screen, on the clipboard and in the download.
+  const visibleCode = useMemo(
+    () => (overrides.size === 0 ? code : lines.map(lineToText).join('\n')),
+    [code, overrides, lines]
+  );
+
+  // Only changes that still match a line in the current file count — one
+  // whose line has since changed (a renamed option, say) has nothing to apply to.
+  const changedCount = useMemo(
+    () => code.split('\n').filter((line) => overrides.has(line)).length,
+    [code, overrides]
   );
 
   const codeCount = useMemo(
@@ -153,6 +234,8 @@ export default function CodeLedger({
     [lines]
   );
 
+  // Judged on the generated file, so removing every line leaves the file
+  // (and its Reset button) on screen rather than flipping to the empty state.
   const hasCode = code.trim().length > 0;
 
   return (
@@ -161,6 +244,15 @@ export default function CodeLedger({
         <h2 className="panel-title">Code replacements</h2>
         <div className="panel-head-meta">
           <CacheStatusBadge />
+          {hasCode && changedCount > 0 && (
+            <button
+              type="button"
+              className="ledger-restore"
+              onClick={() => setOverrides(new Map())}
+            >
+              {changedCount} {changedCount === 1 ? 'change' : 'changes'} &middot; Reset
+            </button>
+          )}
           {hasCode && (
             <span className="ledger-count">
               {codeCount} {codeCount === 1 ? 'code' : 'codes'}
@@ -204,6 +296,7 @@ export default function CodeLedger({
                   line.kind === 'blank' ? 'ledger-line-blank' : '',
                   line.side === null && line.kind === 'entry' ? 'ledger-line-meta' : '',
                   line.duplicate ? 'ledger-line-duplicate' : '',
+                  line.edited ? 'ledger-line-edited' : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}
@@ -217,8 +310,54 @@ export default function CodeLedger({
                 }
               >
                 <span className="ledger-line-kit" aria-hidden="true" />
-                <span className="ledger-line-code">{line.code}</span>
+                {line.kind === 'entry' && editing === line.source ? (
+                  <input
+                    className="ledger-line-code ledger-line-code-input"
+                    aria-label={`New code for ${line.text}`}
+                    value={draft}
+                    // eslint-disable-next-line jsx-a11y/no-autofocus
+                    autoFocus
+                    spellCheck={false}
+                    autoCapitalize="off"
+                    autoComplete="off"
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onBlur={commitEdit}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        commitEdit();
+                      } else if (e.key === 'Escape') {
+                        setEditing(null);
+                      }
+                    }}
+                  />
+                ) : line.kind === 'entry' ? (
+                  <button
+                    type="button"
+                    className="ledger-line-code ledger-line-code-button"
+                    aria-label={`Edit code ${line.code}`}
+                    title="Click to edit this code"
+                    onClick={() => startEdit(line)}
+                  >
+                    {line.code}
+                  </button>
+                ) : (
+                  <span className="ledger-line-code">{line.code}</span>
+                )}
                 <span className="ledger-line-text">{line.text}</span>
+                {line.kind === 'entry' ? (
+                  <button
+                    type="button"
+                    className="ledger-line-remove"
+                    aria-label={`Remove ${line.code} from the file`}
+                    title="Remove this line"
+                    onClick={() => setOverride(line.source, null)}
+                  >
+                    &times;
+                  </button>
+                ) : (
+                  <span className="ledger-line-remove-slot" aria-hidden="true" />
+                )}
               </div>
             ))}
           </div>
@@ -250,11 +389,11 @@ export default function CodeLedger({
 
       {hasCode && (
         <div className="panel-foot">
-          <CopyButton text={code} label="Copy file" />
+          <CopyButton text={visibleCode} label="Copy file" />
           <button
             type="button"
             className="btn btn-secondary"
-            onClick={() => downloadTextFile(code, `${filename}.txt`)}
+            onClick={() => downloadTextFile(visibleCode, `${filename}.txt`)}
           >
             Download .txt
           </button>
