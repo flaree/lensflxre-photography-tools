@@ -99,6 +99,8 @@ export interface CodeOptions {
   initialsCodes: boolean;
   /** Whether an initials code carries the team key ("btf"), goes without it ("tf"), or both. */
   initialsDelimiterMode: InitialsDelimiterMode;
+  /** Adds a code per first-team staff member under each manager line, e.g. "bmas". */
+  staffCodes: boolean;
 }
 
 /**
@@ -133,6 +135,7 @@ export const DEFAULT_CODE_OPTIONS: CodeOptions = {
   nameCodePosition: NAME_CODE_POSITIONS.PREFIX,
   initialsCodes: false,
   initialsDelimiterMode: INITIALS_DELIMITER_MODES.WITH,
+  staffCodes: true,
 };
 
 // Sort Options

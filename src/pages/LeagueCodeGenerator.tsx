@@ -219,6 +219,7 @@ export default function LeagueCodeGenerator(): React.ReactElement {
             nameCodePosition: options.nameCodePosition,
             initialsCodes: options.initialsCodes,
             initialsDelimiterMode: options.initialsDelimiterMode,
+            staffCodes: options.staffCodes,
           })
         );
       } catch (error) {

@@ -210,12 +210,27 @@ export interface Player {
   position: string;
 }
 
+export interface StaffMember {
+  id?: string | null;
+  name: string;
+  role?: string | null;
+  department?: string | null;
+  age?: number | null;
+  nationality?: string[];
+  appointed?: string | null;
+  contractExpires?: string | null;
+  lastClubId?: string | null;
+  lastClubName?: string | null;
+}
+
 export interface ClubProfile {
   id?: string;
   name?: string;
   stadiumName?: string;
   addressLine3?: string;
   manager?: string;
+  /** First-team coaching, medical and kit staff, in the order Transfermarkt lists them. */
+  staff?: StaffMember[];
 }
 
 export interface LeagueClubsResponse {

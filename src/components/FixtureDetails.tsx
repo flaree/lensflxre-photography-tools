@@ -97,6 +97,7 @@ export default function FixtureDetails({
         nameCodePosition: parsed.nameCodePosition ?? previous.nameCodePosition,
         initialsCodes: parsed.initialsCodes ?? previous.initialsCodes,
         initialsDelimiterMode: parsed.initialsDelimiterMode ?? previous.initialsDelimiterMode,
+        staffCodes: parsed.staffCodes ?? previous.staffCodes,
       }));
       setSaved(true);
     } catch {
@@ -125,6 +126,7 @@ export default function FixtureDetails({
           nameCodePosition: options.nameCodePosition,
           initialsCodes: options.initialsCodes,
           initialsDelimiterMode: options.initialsDelimiterMode,
+          staffCodes: options.staffCodes,
         })
       );
       setSaved(true);
@@ -380,6 +382,25 @@ export default function FixtureDetails({
                   </div>
                 )}
               </div>
+            </div>
+
+            <div>
+              <span className="field-label">Staff codes</span>
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={options.staffCodes}
+                  onChange={(e) => set('staffCodes', e.target.checked)}
+                />
+                <span className="check-text">
+                  Add a code for each first-team staff member
+                  <span className="check-sub">
+                    Listed under the manager line, keyed by initials after it — <code>bmas</code>{' '}
+                    types &ldquo;Arsenal assistant manager Albert Stuivenberg&rdquo;. Covers
+                    coaching, medical, kit and team managers.
+                  </span>
+                </span>
+              </label>
             </div>
 
             <div className="grid-2">

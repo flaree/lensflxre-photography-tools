@@ -174,6 +174,7 @@ export const useMatchFile = (options: CodeOptions): UseMatchFileReturn => {
       nameCodePosition: options.nameCodePosition,
       initialsCodes: options.initialsCodes,
       initialsDelimiterMode: options.initialsDelimiterMode,
+      staffCodes: options.staffCodes,
     });
   }, [home, away, homePrefix, awayPrefix, options]);
 

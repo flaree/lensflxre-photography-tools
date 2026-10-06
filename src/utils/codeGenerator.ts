@@ -16,6 +16,12 @@ export interface ClubData {
   name?: string;
   addressLine3?: string;
   manager?: string;
+  staff?: StaffMember[];
+}
+
+export interface StaffMember {
+  name: string;
+  role?: string | null;
 }
 
 export interface GenerateCodeParams {
@@ -53,6 +59,8 @@ export interface GenerateCodeParams {
   initialsCodes?: boolean;
   /** Whether those initials codes carry the team key, go without it, or both. Defaults to 'with'. */
   initialsDelimiterMode?: InitialsDelimiterMode;
+  /** Adds a code per staff member under each team's manager line, e.g. "bmas". Defaults to true. */
+  staffCodes?: boolean;
 }
 
 /**
@@ -95,6 +103,7 @@ export const generateCode = ({
   nameCodePosition = "prefix",
   initialsCodes = false,
   initialsDelimiterMode = "with",
+  staffCodes = true,
 }: GenerateCodeParams): string => {
   // An emptied-out mark would make the name-only code identical to the
   // caption code, silently overwriting it — a dot is the safe fallback.
@@ -297,14 +306,46 @@ export const generateCode = ({
       }\nco\t${competition}\n${additionalCodes}\n\n`
     : "";
 
+  /**
+   * One team's staff codes: the manager's key plus the staff member's
+   * initials, so "bm" is the manager and "bmas" is the assistant beside them.
+   *
+   * The manager already has "bm", so they are skipped here. Two staff with the
+   * same initials get a running number ("bmjs", "bmjs2") rather than one
+   * silently overwriting the other.
+   */
+  const buildStaffLines = (
+    staff: StaffMember[] | undefined,
+    team: string,
+    delimiter: string,
+    manager: string | undefined
+  ): string => {
+    if (!staffCodes || !staff?.length) {
+      return "";
+    }
+    const seen = new Map<string, number>();
+    return staff
+      .filter((member) => member.name && member.name !== manager && playerInitials(member.name))
+      .map((member) => {
+        const base = `${delimiter || "-"}m${playerInitials(member.name)}`;
+        const count = (seen.get(base) ?? 0) + 1;
+        seen.set(base, count);
+        const key = count > 1 ? `${base}${count}` : base;
+        const role = (member.role || "staff").toLowerCase();
+        return `${key}\t${team} ${role} ${member.name}\n`;
+      })
+      .join("");
+  };
+
+  const teamInfo = (team: string, delimiter: string, data: ClubData | null | undefined) =>
+    `${delimiter}\t${team}\n${delimiter}p\t${team} players\n${delimiter}s\t${team} supporters\n${delimiter}m\t${team} manager ${data?.manager || "-"}\n${buildStaffLines(data?.staff, team, delimiter, data?.manager)}`;
+
   // Build team 2 info only if team 2 exists
-  const team2Info = selectedTeam2 
-    ? `${delimiter2}\t${selectedTeam2}\n${delimiter2}p\t${selectedTeam2} players\n${delimiter2}s\t${selectedTeam2} supporters\n${delimiter2}m\t${selectedTeam2} manager ${clubData2?.manager || "-"}\n`
-    : "";
+  const team2Info = selectedTeam2 ? teamInfo(selectedTeam2, delimiter2, clubData2) : "";
 
   let finalCodes = `${additionalInfo}st\t${
     clubData?.stadiumName || "-"
-  }\n${delimiter1}\t${selectedTeam1}\n${delimiter1}p\t${selectedTeam1} players\n${delimiter1}s\t${selectedTeam1} supporters\n${delimiter1}m\t${selectedTeam1} manager ${clubData?.manager || "-"}\n${team2Info}\n\n${code}`;
+  }\n${teamInfo(selectedTeam1, delimiter1, clubData)}${team2Info}\n\n${code}`;
 
   if (shouldShorten) {
     finalCodes = finalCodes.replace(/Football Club/g, "FC");
